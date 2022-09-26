@@ -72,9 +72,9 @@ GRAYSCALE_DEFAULT = False
 # instead of returning None. In hindsight, this change came too late, so I'm
 # changing it back to returning None. But I'm also including this option for
 # folks who would rather have it raise an exception.
-USE_IMAGE_NOT_FOUND_EXCEPTION = False
+USE_IMAGE_NOT_FOUND_EXCEPTION = False # type: bool
 
-scrotExists = False
+scrotExists = False # type: bool
 try:
     if sys.platform not in ('java', 'darwin', 'win32'):
         whichProc = subprocess.Popen(
@@ -107,10 +107,169 @@ if sys.platform == 'win32':
             windll.user32.ReleaseDC.argtypes = [ctypes.c_ssize_t, ctypes.c_ssize_t]
             if windll.user32.ReleaseDC(hWnd, hDC) == 0:
                 raise WindowsError("windll.user32.ReleaseDC failed : return 0")
+try:
+    from typing import TYPE_CHECKING
+except ImportError:
+    TYPE_CHECKING = False
 
-Box = collections.namedtuple('Box', 'left top width height')
-Point = collections.namedtuple('Point', 'x y')
-RGB = collections.namedtuple('RGB', 'red green blue')
+if TYPE_CHECKING:
+    from PIL import Image
+    import numpy
+    from typing import NamedTuple, TypeVar, SupportsFloat, overload, Union, Optional
+    try:
+        from typing_extensions import SupportsIndex, ParamSpec
+        _P = ParamSpec("_P")
+        _R = TypeVar("_R")
+    except ImportError:
+        from typing import SupportsIndex
+    try:
+        from collections.abc import Callable, Generator
+    except ImportError:
+        from typing import Callable, Generator
+
+    class Box(NamedTuple):
+        left: int
+        top: int
+        width: int
+        height: int
+
+    class Point(NamedTuple):
+        x: int
+        y: int
+
+    class RGB(NamedTuple):
+        red: int
+        green: int
+        blue: int
+
+    @overload
+    def locate(
+        needleImage: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        haystackImage: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: Union[SupportsFloat, SupportsIndex, str] = ...,
+    ) -> Optional[Box]: ...
+
+    # _locateAll_python / _locateAll_pillow
+    @overload
+    def locate(
+        needleImage: Union[str, Image.Image],
+        haystackImage: Union[str, Image.Image],
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: None = ...,
+    ) -> Optional[Box]: ...
+
+    # _locateAll_opencv
+    @overload
+    def locateOnScreen(
+        image: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        minSearchTime: float = ...,
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: Union[SupportsFloat, SupportsIndex, str] = ...,
+    ) -> Optional[Box]: ...
+
+    # _locateAll_python / _locateAll_pillow
+    @overload
+    def locateOnScreen(
+        image: Union[str, Image.Image],
+        minSearchTime: float = ...,
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: None = ...,
+    ) -> Optional[Box]: ...
+
+    # _locateAll_opencv
+    @overload
+    def locateAllOnScreen(
+        image: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: int = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: Union[SupportsFloat, SupportsIndex, str] = ...,
+    ) -> Generator[Box, None, None]: ...
+
+    # _locateAll_python / _locateAll_pillow
+    @overload
+    def locateAllOnScreen(
+        image: Union[str, Image.Image],
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: Optional[int] = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: None = ...,
+    ) -> Generator[Box, None, None]: ...
+
+    # _locateAll_opencv
+    @overload
+    def locateCenterOnScreen(
+        image: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        *,
+        minSearchTime: float,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: Union[SupportsFloat, SupportsIndex, str] = ...,
+    ) -> Optional[Point]: ...
+
+    # _locateAll_python / _locateAll_pillow
+    @overload
+    def locateCenterOnScreen(
+        image: Union[str, Image.Image],
+        *,
+        minSearchTime: float,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        region: Optional[tuple[int, int, int, int]] = ...,
+        step: int = ...,
+        confidence: None = ...,
+    ) -> Optional[Point]: ...
+
+    # _locateAll_opencv
+    @overload
+    def locateOnWindow(
+        image: Union[str, Image.Image, numpy.ndarray[int, numpy.dtype[numpy.generic]]],
+        title: str,
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        step: int = ...,
+        confidence: Union[SupportsFloat, SupportsIndex, str] = ...,
+    ) -> Optional[Box]: ...
+
+    # _locateAll_python / _locateAll_pillow
+    @overload
+    def locateOnWindow(
+        image: Union[str, Image.Image],
+        title: str,
+        *,
+        grayscale: Optional[bool] = ...,
+        limit: object = ...,
+        step: int = ...,
+        confidence: None = ...,
+    ) -> Optional[Box]: ...
+else:
+    Box = collections.namedtuple('Box', 'left top width height')
+    Point = collections.namedtuple('Point', 'x y')
+    RGB = collections.namedtuple('RGB', 'red green blue')
 
 class PyScreezeException(Exception):
     """PyScreezeException is a generic exception class raised when a
@@ -128,6 +287,7 @@ class ImageNotFoundException(PyScreezeException):
 
 
 def requiresPillow(wrappedFunction):
+    # type: (Callable[_P, _R]) -> Callable[_P, _R]
     """
     A decorator that marks a function as requiring Pillow to be installed.
     This raises PyScreezeException if Pillow wasn't imported.
@@ -181,8 +341,15 @@ def _load_cv2(img, grayscale=None):
     return img_cv
 
 
-def _locateAll_opencv(needleImage, haystackImage, grayscale=None, limit=10000, region=None, step=1,
-                      confidence=0.999):
+def _locateAll_opencv(
+    needleImage,  # type: str | Image.Image | numpy.ndarray[int, numpy.dtype[numpy.generic]]
+    haystackImage,  # type:  str | Image.Image | numpy.ndarray[int, numpy.dtype[numpy.generic]]
+    grayscale=None,  # type: bool | None
+    limit=10000,  # type: int
+    region=None,  # type: tuple[int, int, int, int] | None
+    step=1,  # type: int
+    confidence=0.999  # type: SupportsFloat | SupportsIndex | str
+):
     """
     TODO - rewrite this
         faster but more memory-intensive than pure python
@@ -195,7 +362,6 @@ def _locateAll_opencv(needleImage, haystackImage, grayscale=None, limit=10000, r
     """
     if grayscale is None:
         grayscale = GRAYSCALE_DEFAULT
-
     confidence = float(confidence)
 
     needleImage = _load_cv2(needleImage, grayscale)
@@ -239,7 +405,15 @@ def _locateAll_opencv(needleImage, haystackImage, grayscale=None, limit=10000, r
 
 # TODO - We should consider renaming _locateAll_python to _locateAll_pillow, since Pillow is the real dependency.
 @requiresPillow
-def _locateAll_python(needleImage, haystackImage, grayscale=None, limit=None, region=None, step=1, confidence=None):
+def _locateAll_python(
+    needleImage,  # type: str | Image.Image
+    haystackImage,  # type: str | Image.Image
+    grayscale=None,  # type: bool | None
+    limit=None,  # type: int | None
+    region=None,  # type: tuple[int, int, int, int] | None
+    step=1,  # type: int
+    confidence=None  # type: None
+):
     """
     TODO
     """
@@ -449,7 +623,11 @@ def locateOnWindow(image, title, **kwargs):
 
 
 @requiresPillow
-def showRegionOnScreen(region, outlineColor='red', filename='_showRegionOnScreen.png'):
+def showRegionOnScreen(
+    region,  # type: tuple[int, int, int, int]
+    outlineColor='red',
+    filename='_showRegionOnScreen.png'
+):
     """
     TODO
     """
@@ -462,7 +640,10 @@ def showRegionOnScreen(region, outlineColor='red', filename='_showRegionOnScreen
 
 
 @requiresPillow
-def _screenshot_win32(imageFilename=None, region=None):
+def _screenshot_win32(
+    imageFilename=None,  # type: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
+    region=None  # type: tuple[int, int, int, int] | None
+):
     """
     TODO
     """
@@ -478,7 +659,10 @@ def _screenshot_win32(imageFilename=None, region=None):
     return im
 
 
-def _screenshot_osx(imageFilename=None, region=None):
+def _screenshot_osx(
+    imageFilename=None,  # type: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
+    region=None  # type: tuple[int, int, int, int] | None
+):
     """
     TODO
     """
@@ -505,7 +689,10 @@ def _screenshot_osx(imageFilename=None, region=None):
     return im
 
 
-def _screenshot_linux(imageFilename=None, region=None):
+def _screenshot_linux(
+    imageFilename=None,  # type: str | bytes | os.PathLike[str] | os.PathLike[bytes] | None
+    region=None  # type: tuple[int, int, int, int] | None
+):
     """
     TODO
     """
@@ -576,7 +763,9 @@ def _steppingFind(needle, haystack, step):
             yield startPos
 
 
-def center(coords):
+def center(
+    coords  # type: tuple[int, int, int, int]
+):
     """
     Returns a `Point` object with the x and y set to an integer determined by the format of `coords`.
 
@@ -597,6 +786,7 @@ def center(coords):
 
 
 def pixelMatchesColor(x, y, expectedRGBColor, tolerance=0):
+    # type: (int, int, tuple[int, int, int] | tuple[int, int, int, int], int) -> bool
     """
     TODO
     """
@@ -612,7 +802,10 @@ def pixelMatchesColor(x, y, expectedRGBColor, tolerance=0):
     else:
         assert False, 'Color mode was expected to be length 3 (RGB) or 4 (RGBA), but pixel is length %s and expectedRGBColor is length %s' % (len(pix), len(expectedRGBColor))
 
-def pixel(x, y):
+def pixel(
+    x,  # type: int
+    y  # type: int
+):
     """
     TODO
     """
