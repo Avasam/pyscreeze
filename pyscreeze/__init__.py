@@ -1,7 +1,7 @@
 # PyScreeze - PyScreeze is a simple, cross-platform screenshot module for Python 2 and 3.
 # By Al Sweigart al@inventwithpython.com
 
-__version__ = '0.1.30'
+__version__ = '1.0.0'
 
 import collections
 import datetime
@@ -59,7 +59,8 @@ GRAYSCALE_DEFAULT = True
 # instead of returning None. In hindsight, this change came too late, so I'm
 # changing it back to returning None. But I'm also including this option for
 # folks who would rather have it raise an exception.
-USE_IMAGE_NOT_FOUND_EXCEPTION = False  # type: bool
+# For version 1.0.0, USE_IMAGE_NOT_FOUND_EXCEPTION is set to True by default.
+USE_IMAGE_NOT_FOUND_EXCEPTION = True  # type: bool
 
 GNOMESCREENSHOT_EXISTS = False  # type: bool
 try:
@@ -714,17 +715,18 @@ def showRegionOnScreen(
 
 def _screenshot_win32(
     imageFilename=None,  # type: str | bytes | Path | None
-    region=None  # type: tuple[int, int, int, int] | None
+    region=None,  # type: tuple[int, int, int, int] | None
+    allScreens=False,  # type: bool
 ):
     """
     TODO
     """
     # TODO - Use the winapi to get a screenshot, and compare performance with ImageGrab.grab()
     # https://stackoverflow.com/a/3586280/1893164
-    im = ImageGrab.grab()
+    im = ImageGrab.grab(all_screens=allScreens)
     if region is not None:
         assert len(region) == 4, 'region argument must be a tuple of four ints'
-        region = tuple(int(x) for x in region)
+        assert isinstance(region[0], int) and isinstance(region[1], int) and isinstance(region[2], int) and isinstance(region[3], int), 'region argument must be a tuple of four ints'
         im = im.crop((region[0], region[1], region[2] + region[0], region[3] + region[1]))
     if imageFilename is not None:
         im.save(imageFilename)
@@ -752,7 +754,7 @@ def _screenshot_osx(
 
         if region is not None:
             assert len(region) == 4, 'region argument must be a tuple of four ints'
-            region = tuple(int(x) for x in region)
+            assert isinstance(region[0], int) and isinstance(region[1], int) and isinstance(region[2], int) and isinstance(region[3], int), 'region argument must be a tuple of four ints'
             im = im.crop((region[0], region[1], region[2] + region[0], region[3] + region[1]))
             os.unlink(tmpFilename)  # delete image of entire screen to save cropped version
             im.save(tmpFilename)
@@ -764,7 +766,11 @@ def _screenshot_osx(
             os.unlink(tmpFilename)
     else:
         # Use ImageGrab.grab() to get the screenshot if Pillow version 6.3.2 or later is installed.
-        im = ImageGrab.grab()
+        if region is not None:
+            im = ImageGrab.grab(bbox=(region[0], region[1], region[2] + region[0], region[3] + region[1]))
+        else:
+            # Get full screen for screenshot
+            im = ImageGrab.grab()
     return im
 
 
@@ -799,7 +805,7 @@ def _screenshot_linux(
         else:
             # Return just a region of the screenshot.
             assert len(region) == 4, 'region argument must be a tuple of four ints'  # TODO fix this
-            region = tuple(int(x) for x in region)
+            assert isinstance(region[0], int) and isinstance(region[1], int) and isinstance(region[2], int) and isinstance(region[3], int), 'region argument must be a tuple of four ints'
             im = im.crop((region[0], region[1], region[2] + region[0], region[3] + region[1]))
             return im
     elif RUNNING_X11 and SCROT_EXISTS:  # scrot only runs on X11, not on Wayland.
@@ -821,7 +827,7 @@ def _screenshot_linux(
 
     if region is not None:
         assert len(region) == 4, 'region argument must be a tuple of four ints'
-        region = tuple(int(x) for x in region)
+        assert isinstance(region[0], int) and isinstance(region[1], int) and isinstance(region[2], int) and isinstance(region[3], int), 'region argument must be a tuple of four ints'
         im = im.crop((region[0], region[1], region[2] + region[0], region[3] + region[1]))
         os.unlink(tmpFilename)  # delete image of entire screen to save cropped version
         im.save(tmpFilename)
@@ -900,6 +906,15 @@ def pixelMatchesColor(x, y, expectedRGBColor, tolerance=0):
     Return True if the pixel at x, y is matches the expected color of the RGB
     tuple, each color represented from 0 to 255, within an optional tolerance.
     """
+
+    # TODO DEPRECATE THIS FUNCTION
+
+    # Note: Automate the Boring Stuff 2nd edition documented that you could call
+    # pixelMatchesColor((x, y), rgb) instead of pixelMatchesColor(x, y, rgb).
+    # Lets correct that for the 1.0 release.
+    if isinstance(x, collections.abc.Sequence) and len(x) == 2:
+        raise TypeError('pixelMatchesColor() has updated and no longer accepts a tuple of (x, y) values for the first argument. Pass these arguments as two separate arguments instead: pixelMatchesColor(x, y, rgb) instead of pixelMatchesColor((x, y), rgb)')
+
     pix = pixel(x, y)
     if len(pix) == 3 or len(expectedRGBColor) == 3:  # RGB mode
         r, g, b = pix[:3]
@@ -927,8 +942,16 @@ def pixel(
     y  # type: int
 ):
     """
-    Return an RGB tuple, each color represented from 0 to 255, of the pixel at x, y.
+    Returns the color of the screen pixel at x, y as an RGB tuple, each color represented from 0 to 255.
     """
+
+    # Note: Automate the Boring Stuff 2nd edition documented that you could call
+    # pixel((x, y), rgb) instead of pixel(x, y, rgb).
+    # Lets correct that for the 1.0 release.
+    if isinstance(x, collections.abc.Sequence) and len(x) == 2:
+        raise TypeError('pixel() has updated and no longer accepts a tuple of (x, y) values for the first argument. Pass these arguments as two separate arguments instead: pixel(x, y) instead of pixel((x, y))')
+
+
     if sys.platform == 'win32':
         # On Windows, calling GetDC() and GetPixel() is twice as fast as using our screenshot() function.
         with __win32_openDC() as hdc:  # handle will be released automatically
