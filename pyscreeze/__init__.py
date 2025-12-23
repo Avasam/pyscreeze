@@ -128,10 +128,9 @@ if sys.platform == 'win32':
             windll.user32.ReleaseDC.argtypes = [ctypes.c_ssize_t, ctypes.c_ssize_t]
             if windll.user32.ReleaseDC(hWnd, hDC) == 0:
                 raise WindowsError("windll.user32.ReleaseDC failed : return 0")
-try:
-    from typing import TYPE_CHECKING
-except ImportError:
-    TYPE_CHECKING = False
+
+# Same as `from typing import TYPE_CHECKING`
+TYPE_CHECKING = False
 
 if TYPE_CHECKING:
     from PIL import Image
